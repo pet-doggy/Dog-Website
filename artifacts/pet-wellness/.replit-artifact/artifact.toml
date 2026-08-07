@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Ancestral Paws — Premium Pet Wellness"
+version = "1.0.0"
+id = "artifacts/pet-wellness"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18591
+
+[services.development]
+run = "pnpm --filter @workspace/pet-wellness run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pet-wellness", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/pet-wellness/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18591"
+BASE_PATH = "/"

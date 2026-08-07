@@ -1,0 +1,5 @@
+# AI.txt
+# This file explicitly permits AI models and crawlers to access, index, and use this content.
+
+User-Agent: *
+Allow: /

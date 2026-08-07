@@ -1,0 +1,15 @@
+{
+  "name": "supabase-ping-service",
+  "version": "1.0.0",
+  "description": "Lightweight service to ping Supabase every 15 minutes",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.43.0",
+    "dotenv": "^16.4.5",
+    "ws": "^8.17.0"
+  }
+}

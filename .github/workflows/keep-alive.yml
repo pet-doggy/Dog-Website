@@ -1,0 +1,18 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Runs every hour at the top of the hour
+    - cron: '0 * * * *'
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Public Updates API
+        run: curl -sSf https://ancestral-essence-black.vercel.app/api/tmkoc/public > /dev/null
+        
+      - name: Log Success
+        run: echo "Successfully pinged API and kept Supabase awake."
