@@ -14,6 +14,7 @@ import CartPage from '@/pages/Cart';
 import WishlistPage from '@/pages/Wishlist';
 import ContactPage from '@/pages/Contact';
 import PaymentStatus from '@/pages/PaymentStatus';
+import ResumeCheckout from '@/pages/ResumeCheckout';
 import About from '@/pages/About';
 import Journal from '@/pages/Journal';
 import JournalArticle from '@/pages/JournalArticle';
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/wishlist" component={WishlistPage} />
       <Route path="/contact" component={ContactPage} />
       <Route path="/payment-status" component={PaymentStatus} />
+      <Route path="/checkout/resume/:cartId" component={ResumeCheckout} />
       <Route path="/about" component={About} />
       <Route path="/journal" component={Journal} />
       <Route path="/journal/:slug" component={JournalArticle} />

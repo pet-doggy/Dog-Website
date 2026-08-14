@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { sendWhatsAppMessage, notifyAdminWhatsApp } from './whatsapp-helper.js';
 
 const CASHFREE_ENVIRONMENT = "PRODUCTION";
 
@@ -105,8 +106,11 @@ export default async function handler(req: any, res: any) {
         `💳 <b>Status:</b> ${escapeHtml(paymentStatus)}\n` +
         `⏱️ <b>Time:</b> ${new Date().toISOString()}`;
 
-      try {
-        const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      const notificationPromises = [];
+
+      // Telegram
+      notificationPromises.push(
+        fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -114,17 +118,29 @@ export default async function handler(req: any, res: any) {
             text: message,
             parse_mode: 'HTML'
           })
-        });
-        if (!tgRes.ok) {
-          console.error("Telegram API Error:", await tgRes.text());
-          telegram_status = 'failed';
-        } else {
-          telegram_status = 'success';
-        }
-      } catch (e) {
-        console.error("Telegram notification error:", e);
-        telegram_status = 'error';
+        }).then(async tgRes => {
+          if (!tgRes.ok) {
+            console.error("Telegram API Error:", await tgRes.text());
+            telegram_status = 'failed';
+          } else {
+            telegram_status = 'success';
+          }
+        }).catch(e => {
+          console.error("Telegram notification error:", e);
+          telegram_status = 'error';
+        })
+      );
+
+      // WhatsApp Notifications (Only on Successful Payment)
+      if (isPaid) {
+        const customerWhatsAppMessage = `Hi ${updatedOrder.customer_name},\n\nYour payment of ₹${updatedOrder.total_amount} was successful! 🎉\nYour order (${updatedOrder.order_number}) is confirmed and will arrive at your home quickly.\n\nThank you for choosing us!`;
+        const adminWhatsAppMessage = `✅ New Order Alert\n\nOrder ID: ${updatedOrder.order_number}\nName: ${updatedOrder.customer_name}\nPhone: ${updatedOrder.phone}\nAmount: ₹${updatedOrder.total_amount}\nItems:\n${itemsText.replace(/<[^>]*>?/gm, '')}`;
+        
+        notificationPromises.push(sendWhatsAppMessage(updatedOrder.phone, customerWhatsAppMessage));
+        notificationPromises.push(notifyAdminWhatsApp(adminWhatsAppMessage));
       }
+
+      await Promise.allSettled(notificationPromises);
     }
 
     return res.status(200).json({ success: true, payment_status: newStatus, order: updatedOrder, telegram_status });

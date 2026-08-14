@@ -66,6 +66,51 @@ serve(async (req) => {
       }
     }
 
+    // 3. Send Warecover Webhook
+    try {
+      const warecoverPayload = {
+        event: "abandoned_cart",
+        customer: {
+          name: customerName || "",
+          phone: phone || "",
+          email: ""
+        },
+        order: {
+          order_id: "", // Usually no order ID yet for abandoned checkout
+          total_amount: "0",
+          currency: "INR",
+          items: [
+            {
+              name: productName || "Unknown Product",
+              quantity: quantity || 1,
+              price: "0"
+            }
+          ]
+        },
+        shipping_address: {
+          address: "",
+          city: "",
+          state: "",
+          pincode: ""
+        }
+      };
+
+      const warecoverRes = await fetch(Deno.env.get("WARECOVER_WEBHOOK_URL")!, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${Deno.env.get("WARECOVER_AUTH_TOKEN")!}`
+        },
+        body: JSON.stringify(warecoverPayload)
+      });
+
+      if (!warecoverRes.ok) {
+        console.error("Warecover API Error:", await warecoverRes.text());
+      }
+    } catch (e) {
+      console.error("Warecover notification error:", e);
+    }
+
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

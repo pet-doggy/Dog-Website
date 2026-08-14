@@ -117,8 +117,84 @@ serve(async (req) => {
       }
     }
 
+    // 4. Send Warecover Webhook if successful
+    let warecover_status = 'not_attempted';
+    if (isPaid && updatedOrder) {
+      try {
+        const warecoverPayload = {
+          event: "order_confirmed",
+          customer: {
+            name: updatedOrder.customer_name || "",
+            phone: updatedOrder.phone || "",
+            email: "" // Email not tracked in orders table currently
+          },
+          order: {
+            order_id: updatedOrder.order_number || "",
+            total_amount: updatedOrder.total_amount?.toString() || "0",
+            currency: "INR",
+            items: updatedOrder.order_items?.map((item: any) => ({
+              name: item.products?.name || "Unknown Product",
+              quantity: item.quantity || 1,
+              price: item.price_at_time?.toString() || "0"
+            })) || []
+          },
+          shipping_address: {
+            address: updatedOrder.address || "",
+            city: updatedOrder.city || "",
+            state: updatedOrder.state || "", // Note: state might not be present in the DB schema
+            pincode: updatedOrder.pin_code || ""
+          }
+        };
+
+        const warecoverRes = await fetch(Deno.env.get("WARECOVER_WEBHOOK_URL")!, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("WARECOVER_AUTH_TOKEN")!}`
+          },
+          body: JSON.stringify(warecoverPayload)
+        });
+
+        if (!warecoverRes.ok) {
+          console.error("Warecover API Error:", await warecoverRes.text());
+          warecover_status = 'failed';
+        } else {
+          warecover_status = 'success';
+        }
+
+        // 5. Send Admin Notification via Warecover
+        const adminPhone = Deno.env.get("WARECOVER_ADMIN_PHONE");
+        if (adminPhone) {
+          const adminPayload = {
+            ...warecoverPayload,
+            event: "new_order_admin", // Distinct event name for the admin template
+            customer: {
+              ...warecoverPayload.customer,
+              phone: adminPhone
+            }
+          };
+
+          const adminRes = await fetch(Deno.env.get("WARECOVER_WEBHOOK_URL")!, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("WARECOVER_AUTH_TOKEN")!}`
+            },
+            body: JSON.stringify(adminPayload)
+          });
+
+          if (!adminRes.ok) {
+            console.error("Warecover Admin API Error:", await adminRes.text());
+          }
+        }
+      } catch (e) {
+        console.error("Warecover notification error:", e);
+        warecover_status = 'error';
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, payment_status: newStatus, order: updatedOrder, telegram_status }),
+      JSON.stringify({ success: true, payment_status: newStatus, order: updatedOrder, telegram_status, warecover_status }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
